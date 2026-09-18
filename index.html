@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadSense AI &mdash; Intelligent Road Damage & Pothole Detection Portal</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet GIS Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+
+    <!-- Chart.js & Leaflet.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="top-navbar">
+        <div class="brand-section">
+            <div class="brand-logo-glow">
+                <span>🛣️</span>
+            </div>
+            <div class="brand-title-wrap">
+                <div class="brand-name">Road<span>Sense</span> AI</div>
+                <div class="brand-subtitle">Automated Highway Patrol & PWD Infrastructure Dispatch</div>
+            </div>
+        </div>
+
+        <nav class="nav-links">
+            <button class="nav-btn nav-active" data-view-target="scanner">
+                <span>🚗</span> Vehicle AI Scanner
+            </button>
+            <button class="nav-btn" data-view-target="map">
+                <span>🗺️</span> GIS Damage Map
+            </button>
+            <button class="nav-btn" data-view-target="dashboard">
+                <span>🏛️</span> PWD Maintenance Portal
+            </button>
+            <button class="nav-btn" data-view-target="reports">
+                <span>📊</span> Analytics & Audits
+            </button>
+        </nav>
+
+        <div class="nav-status-cluster">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                <span>ESP32 SENSORS ONLINE</span>
+            </div>
+
+            <button id="btn-toggle-sound" class="icon-btn" title="Toggle Sound FX">
+                🔊
+            </button>
+
+            <button id="btn-reset-data" class="icon-btn" title="Reset Demo Data">
+                🔄
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="main-content">
+
+        <!-- EXECUTIVE KPI CARDS -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Damages Logged</span>
+                    <span class="kpi-icon">📋</span>
+                </div>
+                <div class="kpi-value" id="kpi-total">0</div>
+                <div class="kpi-subtext">Active Road Monitoring</div>
+            </div>
+
+            <div class="kpi-card kpi-critical">
+                <div class="kpi-header">
+                    <span class="kpi-title">Critical Hazards</span>
+                    <span class="kpi-icon">🚨</span>
+                </div>
+                <div class="kpi-value" id="kpi-critical">0</div>
+                <div class="kpi-subtext">High Rim/Suspension Risk</div>
+            </div>
+
+            <div class="kpi-card kpi-pending">
+                <div class="kpi-header">
+                    <span class="kpi-title">Pending Work Orders</span>
+                    <span class="kpi-icon">⏳</span>
+                </div>
+                <div class="kpi-value" id="kpi-pending">0</div>
+                <div class="kpi-subtext">Awaiting PWD Contractor</div>
+            </div>
+
+            <div class="kpi-card kpi-repaired">
+                <div class="kpi-header">
+                    <span class="kpi-title">Repaired & Restored</span>
+                    <span class="kpi-icon">✅</span>
+                </div>
+                <div class="kpi-value" id="kpi-repaired">0</div>
+                <div class="kpi-subtext" id="kpi-repair-rate">0% Completed</div>
+            </div>
+
+            <div class="kpi-card kpi-budget">
+                <div class="kpi-header">
+                    <span class="kpi-title">Est. Repair Budget</span>
+                    <span class="kpi-icon">💰</span>
+                </div>
+                <div class="kpi-value" id="kpi-cost">₹0</div>
+                <div class="kpi-subtext">PWD Sanction Estimate</div>
+            </div>
+        </section>
+
+        <!-- VIEW 1: VEHICLE AI SCANNER & HARDWARE TELEMETRY -->
+        <section id="view-scanner" class="app-view">
+            <div class="scanner-layout">
+
+                <!-- Left Column: Live RoadVision HUD Scanner -->
+                <div class="dashcam-card">
+                    <div class="dashcam-header">
+                        <div class="dashcam-title-box">
+                            <h3 class="panel-title">
+                                <span>🎥</span> RoadVision&trade; Computer Vision HUD
+                            </h3>
+                        </div>
+
+                        <div class="mode-pills">
+                            <button id="btn-mode-sim" class="btn-mode btn-mode-active">Road Patrol Sim</button>
+                            <button id="btn-mode-cam" class="btn-mode">Live Webcam</button>
+                            <button id="btn-mode-upload" class="btn-mode">Upload Image</button>
+                            <input type="file" id="image-file-input" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+
+                    <!-- Canvas & Video Element -->
+                    <div class="canvas-wrapper">
+                        <canvas id="dashcam-canvas"></canvas>
+                        <video id="webcam-video" playsinline muted></video>
+
+                        <!-- HUD Alert Banners -->
+                        <div id="ai-hazard-alert" class="hud-banner-alert hidden">
+                            ⚠️ <b>POTHOLE DETECTED</b>
+                        </div>
+
+                        <div id="shock-alert-indicator" class="shock-tag hidden">
+                            SHOCK IMPACT: 3.4G
+                        </div>
+                    </div>
+
+                    <!-- Bottom Bar with Telemetry Readouts and Action Button -->
+                    <div class="dashcam-footer-bar">
+                        <div class="hud-telemetry-strip">
+                            <div class="tel-item">
+                                <span class="tel-label">Z-Axis Force</span>
+                                <span class="tel-value" id="hud-z-force">1.02 G</span>
+                            </div>
+                            <div class="tel-item">
+                                <span class="tel-label">Vehicle Speed</span>
+                                <span class="tel-value" id="hud-speed">48 km/h</span>
+                            </div>
+                            <div class="tel-item">
+                                <span class="tel-label">Current Location</span>
+                                <span class="tel-value" id="hud-current-road">Anna Salai - Gemini Flyover</span>
+                            </div>
+                            <div class="tel-item">
+                                <span class="tel-label">GPS Fix</span>
+                                <span class="tel-value" id="hud-gps-coords">13.0524°N, 80.2508°E</span>
+                            </div>
+                        </div>
+
+                        <button id="btn-trigger-bump" class="btn-action-primary" title="Simulate vehicle hitting a bump or pothole">
+                            <span>💥</span> Simulate Bump / Trigger Log
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Hardware Telemetry (ESP32 + Accelerometer) -->
+                <div class="telemetry-side-panel">
+                    
+                    <!-- Vibration Sensor Graph Card -->
+                    <div class="glass-panel">
+                        <div class="panel-title-bar">
+                            <span class="panel-title">
+                                <span>📈</span> ESP32 Vibration Telemetry
+                            </span>
+                            <span class="live-dot"></span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="vibration-chart"></canvas>
+                        </div>
+                        <div class="hw-sensor-grid">
+                            <div class="hw-cell">
+                                <span class="hw-cell-lbl">Impact Threshold</span>
+                                <span class="hw-cell-val">2.50 G</span>
+                            </div>
+                            <div class="hw-cell">
+                                <span class="hw-cell-lbl">Sensor Module</span>
+                                <span class="hw-cell-val">MPU6050</span>
+                            </div>
+                            <div class="hw-cell">
+                                <span class="hw-cell-lbl">MCU Controller</span>
+                                <span class="hw-cell-val">ESP32-WROOM</span>
+                            </div>
+                            <div class="hw-cell">
+                                <span class="hw-cell-lbl">GNSS Satellites</span>
+                                <span class="hw-cell-val" id="hud-sat-count">14 FIX (3D)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Live Incident Stream Card -->
+                    <div class="glass-panel">
+                        <div class="panel-title-bar">
+                            <span class="panel-title">
+                                <span>🛰️</span> Live Incident Stream
+                            </span>
+                            <span class="text-xs text-slate-400 font-mono">PWD AUTO-SYNC</span>
+                        </div>
+                        <div class="incident-mini-list" id="mini-incident-stream">
+                            <div class="incident-mini-item" onclick="window.app.openIncidentDetail('RD-2026-8812')">
+                                <div>
+                                    <div class="font-bold text-sm text-red-400">Pothole (Severe)</div>
+                                    <div class="text-xs text-slate-400">Anna Salai &bull; Depth: 14.2cm</div>
+                                </div>
+                                <span class="custom-badge badge-critical">CRITICAL</span>
+                            </div>
+                            <div class="incident-mini-item" onclick="window.app.openIncidentDetail('RD-2026-8809')">
+                                <div>
+                                    <div class="font-bold text-sm text-amber-400">Alligator Cracking</div>
+                                    <div class="text-xs text-slate-400">OMR IT Corridor &bull; Area: 3.4m²</div>
+                                </div>
+                                <span class="custom-badge badge-moderate">MODERATE</span>
+                            </div>
+                            <div class="incident-mini-item" onclick="window.app.openIncidentDetail('RD-2026-8798')">
+                                <div>
+                                    <div class="font-bold text-sm text-red-400">Sunken Manhole</div>
+                                    <div class="text-xs text-slate-400">Poonamallee High Rd &bull; 11cm</div>
+                                </div>
+                                <span class="custom-badge badge-critical">CRITICAL</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- VIEW 2: INTERACTIVE GIS DAMAGE MAP -->
+        <section id="view-map" class="app-view hidden">
+            <div class="map-view-wrapper">
+                <div class="map-floating-controls">
+                    <span class="text-xs font-bold text-slate-300">FILTER SEVERITY:</span>
+                    <div class="filter-pills-group">
+                        <button class="btn-map-filter filter-active" data-map-filter="all">All Incidents</button>
+                        <button class="btn-map-filter" data-map-filter="critical">🚨 Critical Only</button>
+                        <button class="btn-map-filter" data-map-filter="pending">⏳ Pending Repair</button>
+                        <button class="btn-map-filter" data-map-filter="repaired">✅ Repaired</button>
+                    </div>
+                </div>
+                <div id="map-container"></div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: GOVERNMENT PWD MAINTENANCE DISPATCH PORTAL -->
+        <section id="view-dashboard" class="app-view hidden">
+            <div class="table-panel">
+                <div class="table-toolbar">
+                    <div class="table-filters">
+                        <input type="text" id="search-incident-input" class="search-box" placeholder="Search by road name, ID, or defect...">
+                        
+                        <select id="filter-table-severity" class="select-filter">
+                            <option value="all">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="minor">Minor</option>
+                        </select>
+
+                        <select id="filter-table-status" class="select-filter">
+                            <option value="all">All Statuses</option>
+                            <option value="reported">Reported</option>
+                            <option value="work_order_issued">Work Order Issued</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="repaired">Repaired</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="btn-export-csv" class="btn-secondary">
+                            📥 Export CSV
+                        </button>
+                        <button id="btnPrintReport" class="btn-secondary" onclick="window.print()">
+                            🖨️ Print Dispatch Order
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="pwd-table">
+                        <thead>
+                            <tr>
+                                <th>Incident ID</th>
+                                <th>Road & Location</th>
+                                <th>Defect Profile</th>
+                                <th>Severity</th>
+                                <th>Maintenance Status</th>
+                                <th>Est. Budget</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incident-table-body">
+                            <!-- Populated dynamically by app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: ANALYTICS & AUDIT SUMMARY -->
+        <section id="view-reports" class="app-view hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-panel">
+                    <div class="panel-title-bar">
+                        <span class="panel-title">📊 Road Quality & Defect Distribution</span>
+                    </div>
+                    <p class="text-sm text-slate-300 mb-4">
+                        Visualizing automated highway patrol classification across high-traffic urban corridors.
+                    </p>
+                    <div class="space-y-4 font-mono text-sm">
+                        <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                            <span class="text-red-400 font-bold">Severe Potholes (>10cm depth)</span>
+                            <span class="text-white font-bold">48% of total hazards</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                            <span class="text-amber-400 font-bold">Alligator & Fatigue Cracks</span>
+                            <span class="text-white font-bold">29% of road surfaces</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                            <span class="text-cyan-400 font-bold">Sunken Manhole & Joint Failures</span>
+                            <span class="text-white font-bold">23% of municipal junctions</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <div class="panel-title-bar">
+                        <span class="panel-title">🛡️ Smart City Highway Authority Guidelines</span>
+                    </div>
+                    <ul class="text-sm text-slate-300 space-y-3 leading-relaxed">
+                        <li>&bull; <b class="text-red-400">Critical Priority (Tier-1):</b> Depth &gt; 10cm or impact shock &gt; 3.0G. Work orders automatically generated and dispatched to contractors within 2 hours.</li>
+                        <li>&bull; <b class="text-amber-400">Moderate Priority (Tier-2):</b> Cracks & fatigue depressions. Bitumen sealing scheduled within 72 hours before monsoon deterioration.</li>
+                        <li>&bull; <b class="text-emerald-400">Verification & Audit:</b> Once contractor finishes patch repairs, patrol vehicle re-scans the coordinate to verify surface smoothness before payout sanction.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- INCIDENT INSPECTION & WORK ORDER DISPATCH MODAL -->
+    <div id="incident-inspection-modal" class="modal-backdrop hidden">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="text-xl">🔍</span>
+                    <div>
+                        <h3 class="modal-title">Road Hazard Inspection</h3>
+                        <div class="text-xs text-cyan-400 font-mono" id="modal-inc-id">RD-2026-0000</div>
+                    </div>
+                </div>
+                <button class="btn-close-modal" onclick="window.app.closeModal()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-grid-2col">
+                    <!-- Photo Snapshot Preview -->
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold mb-2">Edge Camera Capture Snapshot</div>
+                        <div class="snapshot-container">
+                            <img id="modal-inc-img" src="" alt="Road Hazard Snapshot">
+                        </div>
+                    </div>
+
+                    <!-- Telemetry & Metrics Spec Sheet -->
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold mb-2">Telemetry & AI Vision Specs</div>
+                        <div class="telemetry-spec-sheet">
+                            <div class="spec-cell">
+                                <span class="spec-lbl">Defect Type</span>
+                                <span class="spec-val text-red-400" id="modal-inc-type">-</span>
+                            </div>
+                            <div class="spec-cell">
+                                <span class="spec-lbl">Estimated Depth</span>
+                                <span class="spec-val" id="modal-inc-depth">-</span>
+                            </div>
+                            <div class="spec-cell">
+                                <span class="spec-lbl">Surface Area</span>
+                                <span class="spec-val" id="modal-inc-area">-</span>
+                            </div>
+                            <div class="spec-cell">
+                                <span class="spec-lbl">AI Confidence</span>
+                                <span class="spec-val text-cyan-400" id="modal-inc-conf">-</span>
+                            </div>
+                            <div class="spec-cell">
+                                <span class="spec-lbl">Z-Impact Shock</span>
+                                <span class="spec-val text-amber-400" id="modal-inc-gforce">-</span>
+                            </div>
+                            <div class="spec-cell">
+                                <span class="spec-lbl">Vehicle Speed</span>
+                                <span class="spec-val" id="modal-inc-speed">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incident Location & Road Information -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase">Road Name & Highway Segment</div>
+                        <div class="font-bold text-white text-base mt-1" id="modal-inc-road">-</div>
+                        <div class="text-xs text-slate-400 font-mono mt-0.5" id="modal-inc-coords">-</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400 uppercase">Current Status</div>
+                        <div class="mt-1">
+                            <span id="modal-inc-status" class="status-pill status-reported">REPORTED</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Government PWD Work Order Dispatch Action Box -->
+                <div class="workflow-box">
+                    <div class="workflow-header">
+                        🏛️ Government PWD Maintenance Dispatch Action
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="contractor-select-wrap">
+                            <label>Assign Maintenance Contractor Division:</label>
+                            <select id="modal-contractor-select" class="select-filter w-full">
+                                <!-- Options populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1">Estimated Repair Sanction (₹):</label>
+                            <div class="font-mono text-xl font-bold text-emerald-400" id="modal-inc-cost">₹0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="window.app.locateOnMap()">
+                    📍 Locate on Map
+                </button>
+                <button class="btn-order-issue" onclick="window.app.issueWorkOrder()">
+                    📜 Issue PWD Work Order
+                </button>
+                <button class="btn-secondary" onclick="window.app.markInProgress()">
+                    👷 Mark In-Progress
+                </button>
+                <button class="btn-repaired-verify" onclick="window.app.markRepaired()">
+                    ✅ Verify Repaired & Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST POPUP NOTIFICATION -->
+    <div id="toast-notification" class="toast-popup">
+        Action completed successfully.
+    </div>
+
+    <!-- Application Script Dependencies -->
+    <script src="js/audio.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/telemetry.js"></script>
+    <script src="js/ai-scanner.js"></script>
+    <script src="js/map-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
